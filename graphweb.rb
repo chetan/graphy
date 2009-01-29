@@ -59,7 +59,7 @@ class GraphServlet < HTTPServlet::AbstractServlet
 
     def do_GET(req, res)
   
-        res['Content-Type'] = "text/html"
+        res['Content-Type'] = 'text/html'
         
         datasets = DataSet.create
         
@@ -73,27 +73,10 @@ class GraphServlet < HTTPServlet::AbstractServlet
       google.setOnLoadCallback(drawChart);
       function drawChart() {
         var i;
-        var data = new google.visualization.DataTable();
-        
-        data.addColumn('datetime', 'Date/Time');
+        var data = new google.visualization.DataTable(
 EOF
-        
-        datasets.cols.each { |col|
-            body << "data.addColumn('number', '#{col[0]}'); // column name\n"
-            #body << "data.addColumn('string', '#{col[1]}');    // desc title\n"
-            #body << "data.addColumn('string', '#{col[2]}');     // desc text\n"
-        }
-
-        # 1 2 3 4
-        # 1 4 7 10
-        # idx + (idx - 1) * 2
-        datasets.data.each { |d|
-            body << "i = data.addRow();\n"
-            body << sprintf("data.setValue(i, 0, new Date(%s));\n", d[0] * 1000)
-            (1..datasets.num).each { |idx|
-                body << sprintf("data.setValue(i, %s, %s);\n", idx, d[idx])
-            }
-        }
+        body << datasets.to_js_table()
+        body << ", 0.5);\n\n"
 
         body << <<-EOF
         var chart = new google.visualization.AnnotatedTimeLine(document.getElementById('chart_div'));
@@ -103,7 +86,7 @@ EOF
   </head>
 
   <body>
-    <div id='chart_div' style='width: 700px; height: 240px;'></div>
+    <div id='chart_div' style='width: 98%; height: 480px;'></div>
   </body>
 </html>
 EOF
@@ -111,14 +94,7 @@ EOF
         res.body = body.join
     
     end
-end
-
-class DataServlet < HTTPServlet::AbstractServlet
-
-    def do_GET(req, res)
-    
-    end
-
+       
 end
 
 # need this singleton so we can grab the data from inside our servlet
@@ -137,6 +113,67 @@ class DataSet
         @data = []
         @cols = []
         @num = 0
+    end
+    
+    
+#     {
+#       cols: [{id: 'A', label: 'NEW A', type: 'string'},
+#              {id: 'B', label: 'B-label', type: 'number'},
+#              {id: 'C', label: 'C-label', type: 'date'}
+#             ],
+#       rows: [{c:[{v: 'a'}, {v: 1.0, f: 'One'}, {v: new Date(2008, 1, 28, 0, 31, 26), f: '2/28/08 12:31 AM'}]},
+#              {c:[{v: 'b'}, {v: 2.0, f: 'Two'}, {v: new Date(2008, 2, 30, 0, 31, 26), f: '3/30/08 12:31 AM'}]},
+#              {c:[{v: 'c'}, {v: 3.0, f: 'Three'}, {v: new Date(2008, 3, 30, 0, 31, 26), f: '4/30/08 12:31 AM'}]}
+#             ]
+#     }  
+    
+    def to_js_table
+    
+        buff = []
+        
+        buff << '{ '
+        buff << 'cols: ['
+        buff << "{id: 'date', label: 'Date/Time', type: 'datetime'}"
+        @cols.each_with_index { |col,i|
+            buff << ",{id: 'col_#{i}', label: '#{col}', type: 'number'}"
+        }
+        buff << "],"
+        
+        buff << 'rows: ['
+        @data.each_with_index { |d,i|
+            buff << "," if i > 0
+            buff << sprintf("{c:[{v: new Date(%s)}", d[0] * 1000)
+            (1..@num).each { |idx|
+                buff << sprintf(",{v: %s}", d[idx])
+            }
+            buff << "]}"
+        }
+        buff << "] }"
+        
+        return buff.join
+    
+    end
+    
+    def to_csv
+    
+        buff = []
+        
+        buff << 'date'
+        @cols.each { |col|
+            buff << ',' + col[0]
+        }
+        buff << "\n"
+        
+        @data.each { |d|
+            buff << sprintf("%s", d[0] * 1000)
+            (1..@num).each { |idx|
+                buff << sprintf(",%s", d[idx])
+            }
+            buff << "\n"
+        }
+        
+        return buff.join()
+    
     end
 
 end
