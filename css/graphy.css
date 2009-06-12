@@ -1,0 +1,20 @@
+#console { 
+    padding-top: 10px;
+}
+
+#console input {
+    border: 1px solid gray;
+    width: 600px;
+    font-size: 1em;
+}
+
+#buffer {
+    padding-top: 10px;
+}
+
+iframe {
+    border: 1px solid gray;
+    width: 600px;
+    font-size: 1em;
+    font-family: Lucida Grande;
+}
